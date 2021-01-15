@@ -1,0 +1,14 @@
+[package]
+name = "noah"
+version = "0.1.0"
+authors = ["Chase Wilson <me@chasewilson.dev>"]
+edition = "2018"
+license = "MIT or Apache-2.0"
+
+[features]
+default = ["std", "serde"]
+std = []
+
+[dependencies.serde]
+version = "1.0.119"
+optional = true
