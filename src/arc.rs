@@ -1,5 +1,4 @@
 use crate::{abort::abort, atomic::Atomic};
-#[cfg(feature = "std")]
 use alloc::boxed::Box;
 use core::{
     borrow::Borrow,
@@ -78,6 +77,7 @@ impl<T: ?Sized, A: Atomic> Arc<T, A> {
     ///
     /// The pointer supplied *must* have come from [`Arc::into_raw`]
     ///
+    #[inline]
     pub unsafe fn from_raw(ptr: *const T) -> Self
     where
         T: Sized,
@@ -157,30 +157,52 @@ impl<T: ?Sized, A: Atomic> Arc<T, A> {
             // reference count is guaranteed to be 1 at this point, and we required
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
-            &mut (*this.ptr()).data
+            Self::get_mut_unchecked(this)
         }
     }
 
-    /// Provides mutable access to the contents _if_ the `Arc` is uniquely owned.
+    /// Provides mutable access to the contents *if* the `Arc` is uniquely owned.
     #[inline]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if this.is_unique() {
-            unsafe {
-                // See make_mut() for documentation of the thread safety here.
-                Some(&mut (*this.ptr()).data)
-            }
+            // This unsafety is ok because we're guaranteed that the pointer
+            // returned is the *only* pointer that will ever be returned to T. Our
+            // reference count is guaranteed to be 1 at this point, and we required
+            // the `Arc` itself to be `mut`, so we're returning the only possible
+            // reference to the inner data.
+            Some(unsafe { Self::get_mut_unchecked(this) })
         } else {
             None
         }
     }
 
+    /// Returns a mutable reference into the given `Arc`, without any checks.
+    ///
+    /// See also [`get_mut`], which is safe and does appropriate checks.
+    ///
+    /// # Safety
+    ///
+    /// Any other `Arc` pointers to the same allocation must not be dereferenced
+    /// for the duration of the returned borrow.
+    /// This is trivially the case if no such pointers exist,
+    /// for example immediately after `Arc::new`.
+    ///
+    /// [`get_mut`]: Arc::get_mut
+    #[allow(unused_unsafe)]
+    #[inline]
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
+        // We are careful to *not* create a reference covering the "count" fields, as
+        // this would alias with concurrent access to the reference counts (e.g. by `Weak`).
+        unsafe { &mut (*this.ptr.as_ptr()).data }
+    }
+
     /// Whether or not the `Arc` is uniquely owned (is the refcount 1?).
     #[inline]
     pub fn is_unique(&self) -> bool {
-        // See the extensive discussion in [1] for why this needs to be Acquire.
-        //
-        // [1] https://github.com/servo/servo/issues/21186
-        Self::ref_count(self) == 1
+        // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
+        // counter in `drop` -- the only access that happens when any but the last reference
+        // is being dropped.
+        self.inner().count.load(Ordering::Acquire) == 1
     }
 
     /// Gets the number of pointers to this allocation

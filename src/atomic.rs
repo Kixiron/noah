@@ -14,6 +14,8 @@ pub trait Atomic: Sealed {
     fn fetch_add(&self, val: u64, order: Ordering) -> u64;
 
     fn fetch_sub(&self, val: u64, order: Ordering) -> u64;
+
+    fn store(&self, val: u64, order: Ordering);
 }
 
 macro_rules! impl_atomic {
@@ -40,6 +42,11 @@ macro_rules! impl_atomic {
                 #[inline]
                 fn fetch_sub(&self, val: u64, order: Ordering) -> u64 {
                     self.fetch_sub(val as _, order) as u64
+                }
+
+                #[inline]
+                fn store(&self, val: u64, order: Ordering) {
+                    self.store(val as _, order);
                 }
             }
 
