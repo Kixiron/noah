@@ -2,7 +2,7 @@
 name = "noah"
 version = "0.1.0"
 authors = ["Chase Wilson <me@chasewilson.dev>"]
-edition = "2018"
+edition = "2021"
 license = "MIT or Apache-2.0"
 
 [features]
@@ -10,5 +10,5 @@ default = ["std", "serde"]
 std = []
 
 [dependencies]
-serde = { version = "1.0.119", optional = true }
+serde = { version = "1.0.137", optional = true }
 bytemuck = { version = "1.9.1", features = ["extern_crate_alloc"] }
