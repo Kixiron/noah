@@ -9,6 +9,6 @@ license = "MIT or Apache-2.0"
 default = ["std", "serde"]
 std = []
 
-[dependencies.serde]
-version = "1.0.119"
-optional = true
+[dependencies]
+serde = { version = "1.0.119", optional = true }
+bytemuck = { version = "1.9.1", features = ["extern_crate_alloc"] }

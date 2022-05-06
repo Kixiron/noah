@@ -2,11 +2,12 @@ use crate::{
     arc::{Arc, ArcInner},
     Atomic,
 };
-use alloc::{alloc::Layout, boxed::Box, vec::Vec};
+use alloc::{alloc::Layout, boxed::Box};
+use bytemuck::{allocation::zeroed_slice_box, Zeroable};
 use core::{
     marker::PhantomData,
     mem::{self, size_of},
-    ptr::{self, NonNull},
+    ptr::{addr_of_mut, NonNull},
     slice,
 };
 
@@ -97,14 +98,13 @@ where
             //
             // Note that any panics here (i.e. from the iterator) are safe, since
             // we'll just leak the uninitialized memory
-            ptr::write(&mut ((*ptr).count), A::one());
-            ptr::write(&mut ((*ptr).data.header), header);
+            addr_of_mut!((*ptr).count).write(A::ONE);
+            addr_of_mut!((*ptr).data.header).write(header);
 
             if let Some(current) = (*ptr).data.slice.get_mut(0) {
                 let mut current: *mut T = current;
                 for _ in 0..num_items {
-                    ptr::write(
-                        current,
+                    current.write(
                         items
                             .next()
                             .expect("ExactSizeIterator over-reported length"),
@@ -137,13 +137,11 @@ where
     }
 
     #[inline]
-    unsafe fn allocate_buffer<W>(size: usize) -> *mut u8 {
-        let words_to_allocate = divide_rounding_up(size, mem::size_of::<W>());
+    unsafe fn allocate_buffer<W: Zeroable>(size: usize) -> *mut u8 {
+        let words_to_allocate = divide_rounding_up(size, size_of::<W>());
+        let allocated = zeroed_slice_box::<W>(words_to_allocate);
 
-        let mut vec = Vec::<W>::with_capacity(words_to_allocate);
-        vec.set_len(words_to_allocate);
-
-        Box::into_raw(vec.into_boxed_slice()).cast()
+        Box::into_raw(allocated).cast()
     }
 }
 

@@ -15,7 +15,7 @@ pub(crate) fn abort() -> ! {
 
     impl Drop for PanicOnDrop {
         fn drop(&mut self) {
-            panic()
+            panic();
         }
     }
 
