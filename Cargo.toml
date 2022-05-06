@@ -12,3 +12,7 @@ std = []
 [dependencies]
 serde = { version = "1.0.137", optional = true }
 bytemuck = { version = "1.9.1", features = ["extern_crate_alloc"] }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
